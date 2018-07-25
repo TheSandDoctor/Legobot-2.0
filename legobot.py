@@ -48,7 +48,7 @@ def add_icon():
 	pass
 
 def getTransclusions(site,page,sleep_duration = None,extra=""):
-	cont = None;
+	cont = None
 	pages = []
 	i = 0
 	while(1):
