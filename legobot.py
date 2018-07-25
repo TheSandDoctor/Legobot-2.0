@@ -1,13 +1,15 @@
 #!/usr/bin/env python3.6
-import mwclient, configparser, mwparserfromhell, re, argparse, sys,time
+import  mwparserfromhell
+import mwclient #TODO: clean up mwclient imports
 from mwclient import *
 from datetime import *
 from dateutil import *
-import time,re,string
+import time, re, sys
+
 # Source I am converting from:
 # https://github.com/legoktm/harej-bots/blob/master/goodarticles.php
 botuser = 'Legobot'
-databasename = 's51043__legobot'
+databasename = 's53824__legobot2'
 
 def place_notif(user,status,page):
 	if user is None:
@@ -51,7 +53,7 @@ def getTransclusions(site,page,sleep_duration = None,extra=""):
 	cont = None
 	pages = []
 	i = 0
-	while(1):
+	while True:
 		result = site.api('query',list='embeddedin',eititle=str(page),eicontinue=cont,eilimit=500,format='json')
 		print("got here")
 		if sleep_duration is (not None):
