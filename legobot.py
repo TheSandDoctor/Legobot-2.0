@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.6
-import  mwparserfromhell
+import mwparserfromhell
+import toolforge
 import mwclient #TODO: clean up mwclient imports
 from mwclient import *
 from datetime import *
@@ -42,6 +43,11 @@ def allow_bots(text, user):
 				if bot in (user, 'all'):
 					return False
 	return True
+
+def getUserID(username):
+	result = site.api('query', list='users', ususers=username, format='json')
+	return result['query']['users'][0]['userid']
+
 def update_GAN_page():
 	pass
 def transclude_review():
@@ -224,6 +230,22 @@ print("Logging in...")
 #TODO: Log in stuff
 print("Checking users how don't want messages left on their behalf...")
 site = mwclient.Site(('https','en.wikipedia.org'), '/w/')
+
+print("Retrieving database login credentials...")
+# Might like to use ConfigParser
+with open('/data/project/legobot-2/replica.my.cnf', 'r') as iniFile:
+	splitIni = iniFile.splitlines()
+	forgeUsername = splitIni[1]
+	forgePassword = splitIni[2]
+	print("Done.")
+	
+print("Logging into database...")
+try:
+         conn = toolforge.connect(databasename, user = forgeUsername, password = forgePassword)
+except Exception as e:
+	print("Error: {}".format(e))
+# https://wikitech.wikimedia.org/wiki/User:Legoktm/toolforge_library
+
 page = site.Pages["User:GA bot/Don't notify users for me"]
 user_no_msg_regex = re.compile(r'\[\[User:(.+)\]\]',re.IGNORECASE)
 dontNotify = user_no_msg_regex.findall(page.text())
@@ -247,16 +269,13 @@ if text is "":
 
 #Each GA nominee tag will now be standardized and stripped apart, with each detail found in each tag sorted into the right array
 
-#TODO: Database stuff here
-
-# end of TODO
 titles = []
 ganoms = []
 count = 0
 for art in articles:
 	title = art[5:]
 	contents = site.Pages[art]
-	if contents is "":   #FIXME: Is this right?
+	if not contents:
 		continue
 	ganom = None
 	code = mwparserfromhell.parse(text)
@@ -266,10 +285,6 @@ for art in articles:
 			break
 	if ganom is None:
 		continue    # move on
-
-
-
-
 
 	#TODO: The next block of code, could probably be done better
 	currentNom = GANom(title,ganom)
@@ -303,3 +318,25 @@ for art in articles:
 
 
 			del old_contents
+			
+			with conn.cursor() as cur:
+				cur.execute("DELETE FROM `gan` WHERE `page` = {}".format(title))
+				cur.execute("INSERT INTO `gan` (`page`, `reviewerplain`, `reviewer`, `subtopic`," \
+					        "`nominator`) VALUES ({},{},{},{},{})".format(title, currentNom.getVar('reviewer'),
+											                              reviewer[1], currentNom.getVar('subtopic'),
+											                              currentNom.getVar('nominator_plain')))
+				cur.execute("INSERT INTO `reviews` (`review_article`, `review_subpage`," \
+					        "`review_user`, `review_timestamp`) VALUES" \
+					        " ({},{},{},{})".format(site.Pages[title].pageid, site.Pages[reviewpage].pageid,
+								                    getUserID(currentNom.getVar('reviewer')),
+                                                    currentNom.getVar('unixtime')))
+				cur.execute("INSERT INTO `user` (`user_id`, `user_name`) VALUES ({},{})".format(getUserID(currentNom.getVar('reviewer')),
+                                                                                                currentNom.getVar('reviewer')))
+                cur.execute("INSERT INTO `article` (`article_id`, `article_title`, `article_status`)" \
+                            "VALUES ({},{},{})".format(site.Pages[title].pageid, title, ""))
+                
+                # gaStats
+                # set = False
+                # for 
+
+                    
