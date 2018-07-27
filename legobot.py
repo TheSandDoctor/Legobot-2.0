@@ -341,7 +341,7 @@ for art in articles:
             contents = contents.replace("status=|", "status=onreview|")
             if not re.match('\{\{' + re.escape(reviewpage) + '\}\}', contents, re.IGNORECASE):
                 contents += "\n\n{{{" + reviewpage + "}}}"
-            if (contents is not old_contents and allow_bots(art.text(), 'GA bot')) is True:
+            if (contents is not old_contents and allow_bots(art.text(), botuser)) is True:
                 page.save(art, summary="Transcluding GA review", bot=True, minor=True)
 
             # Notify the nom that the page is now on review
@@ -355,7 +355,7 @@ for art in articles:
                 sig = currentNom.getVar('reviewer')
                 sig2 = "-- {{subst:user0|User=" + sig + "}}"
                 msg = "{{subst:GANotice|article=" + currentNom + "|days=7}} <small>Message delivered by [[User:" + botuser + "|" + botuser + "]], on behalf of [[User:" + sig + "|" + sig + "]]</small>" + sig2
-                if allow_bots(noms_talk_page.content(), 'GA bot'):
+                if allow_bots(noms_talk_page.content(), botuser):
                     page.save(noms_talk_page.content() + "\n\n" + msg,
                               summary="/* Your [[WP:GA|GA]] nomination of [[" + currentNom + "]] */ new section")
 
