@@ -5,7 +5,9 @@ import mwclient  # TODO: clean up mwclient imports
 from mwclient import *
 from datetime import *
 from dateutil import *
-import time, re, sys
+import time
+import re 
+import sys
 
 # Source I am converting from:
 # https://github.com/legoktm/harej-bots/blob/master/goodarticles.php
@@ -36,12 +38,14 @@ def allow_bots(text, user):
     for param in tl.params:
         bots = [x.lower().strip() for x in param.value.split(",")]
         if param.name == 'allow':
-            if ''.join(bots) == 'none': return False
+            if ''.join(bots) == 'none': 
+                return False
             for bot in bots:
                 if bot in (user, 'all'):
                     return True
         elif param.name == 'deny':
-            if ''.join(bots) == 'none': return True
+            if ''.join(bots) == 'none': 
+                return True
             for bot in bots:
                 if bot in (user, 'all'):
                     return False
@@ -343,10 +347,11 @@ for art in articles:
             # Notify the nom that the page is now on review
             noms_talk_page = site.Pages["User talk:" + currentNom.getVar('nominator_plain')]
             # FIXME: noms_talk_page.resolveRedirects() http://mwclient.readthedocs.io/en/latest/reference/page.html?highlight=redirect
-            if (noms_talk_page[0:len("User talk")] is "User talk"
-                    and not re.match(r'\[\[' + re.escape(currentNom) + r'\]\].+?' +
-                                     re.escape('<!-- Template:GANotice -->') + "/", noms_talk_page.content())
-                    and not currentNom.getVar('reviewer') in dontNotify):
+            # Clean all this up
+            if (noms_talk_page[0:len("User talk")] is "User talk" and not
+            re.match(r'\[\[{}\]\].+?{}/'.format(re.escape(currentNom), re.escape('<!-- Template:GANotice -->')),
+            noms_talk_page.content())
+            and not currentNom.getVar('reviewer') in dontNotify):
                 sig = currentNom.getVar('reviewer')
                 sig2 = "-- {{subst:user0|User=" + sig + "}}"
                 msg = "{{subst:GANotice|article=" + currentNom + "|days=7}} <small>Message delivered by [[User:" + botuser + "|" + botuser + "]], on behalf of [[User:" + sig + "|" + sig + "]]</small>" + sig2
@@ -358,21 +363,17 @@ for art in articles:
 
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM `gan` WHERE `page` = {}".format(title))
-                cur.execute("INSERT INTO `gan` (`page`, `reviewerplain`, `reviewer`, `subtopic`," \
+                cur.execute("INSERT INTO `gan` (`page`, `reviewerplain`, `reviewer`, `subtopic`, "
                             "`nominator`) VALUES ({},{},{},{},{})".format(title, currentNom.getVar('reviewer'),
                                                                           reviewer[1], currentNom.getVar('subtopic'),
                                                                           currentNom.getVar('nominator_plain')))
-                cur.execute("INSERT INTO `reviews` (`review_article`, `review_subpage`," \
-                            "`review_user`, `review_timestamp`) VALUES" \
-                            " ({},{},{},{})".format(site.Pages[title].pageid, site.Pages[reviewpage].pageid,
-                                                    getUserID(currentNom.getVar('reviewer')),
-                                                    currentNom.getVar('unixtime')))
+                cur.execute("INSERT INTO `reviews` (`review_article`, `review_subpage`, "
+                            "`review_user`, `review_timestamp`) VALUES "
+                            "({},{},{},{})".format(site.Pages[title].pageid, site.Pages[reviewpage].pageid,
+                                                   getUserID(currentNom.getVar('reviewer')),
+                                                   currentNom.getVar('unixtime')))
                 cur.execute("INSERT INTO `user` (`user_id`, `user_name`) VALUES ({},{})".format(
                     getUserID(currentNom.getVar('reviewer')),
                     currentNom.getVar('reviewer')))
-        cur.execute("INSERT INTO `article` (`article_id`, `article_title`, `article_status`)" \
-                    "VALUES ({},{},{})".format(site.Pages[title].pageid, title, ""))
-
-    # gaStats
-    # set = False
-    # for
+                cur.execute("INSERT INTO `article` (`article_id`, `article_title`, `article_status`) "
+                            "VALUES ({},{},{})".format(site.Pages[title].pageid, title, ""))
