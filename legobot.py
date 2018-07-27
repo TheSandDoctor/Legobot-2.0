@@ -65,8 +65,11 @@ def transclude_review():
     pass
 
 
-def add_icon():
-    pass
+def add_icon(title):
+    text = site.Pages[title].text()
+    if (re.search(r'\{\{good( |_)article\}\}', text.lower()) is None and allow_bots(text, botuser):
+        savetext = "{{good article}}\n{}".format(text)
+        page.save(title, summary="Adding Good Article Icon", bot=True, minor=True)
 
 
 def getTransclusions(site, page, sleep_duration=None, extra=""):
