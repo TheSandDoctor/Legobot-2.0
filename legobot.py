@@ -2,6 +2,7 @@
 import mwparserfromhell
 import toolforge
 import mwclient  # TODO: clean up mwclient imports
+import pymysql
 from mwclient import *
 from datetime import *
 from dateutil import *
@@ -47,7 +48,7 @@ def getUserID(username):
 
 def add_icon(title):
     text = site.Pages[title].text()
-    if (re.search(r'\{\{good( |_)article\}\}', text.lower()) is None and allow_bots(text, botuser):
+    if (re.search(r'\{\{good( |_)article\}\}', text, re.I) is None and allow_bots(text, botuser):
         savetext = "{{good article}}\n{}".format(text)
         page.save(title, summary="Adding Good Article Icon", bot=True, minor=True)
 
@@ -79,12 +80,12 @@ def getTransclusions(site, page, sleep_duration=None, extra=""):
 
 
 class editsummary:
-    def __init__(self):
-        self.passed = {}
-        self.failed = {}
-        self.sNew = {}
-        self.onReview = {}
-        self.onHold = {}
+    def __init__(self): # **kwargs ?
+        self.passed = []
+        self.failed = []
+        self.sNew = []
+        self.onReview = []
+        self.onHold = []
 
     def passed(self, page, subcat):
         # self.passed.append(page)
@@ -249,7 +250,7 @@ class GANom:
             code += "#: [[File:Ambox_notice.png|15px]] '''Note:''' " + self.note + "\n"
         return code
 
-
+        
 print("Logging in...")
 # TODO: Log in stuff
 print("Checking users how don't want messages left on their behalf...")
@@ -268,6 +269,7 @@ try:
     conn = toolforge.connect(databasename, user=forgeUsername, password=forgePassword)
 except Exception as e:
     print("Error: {}".format(e))
+    sys.exit(0)
 # https://wikitech.wikimedia.org/wiki/User:Legoktm/toolforge_library
 
 page = site.Pages["User:GA bot/Don't notify users for me"]
@@ -298,7 +300,7 @@ ganoms = []
 count = 0
 for art in articles:
     title = art[5:]
-    contents = site.Pages[art]
+    contents = site.Pages[art].text()
     if not contents:
         continue
     ganom = None
@@ -313,9 +315,9 @@ for art in articles:
     # TODO: The next block of code, could probably be done better
     currentNom = GANom(title, ganom)
     reviewpage = "Talk:" + currentNom + "/GA" + currentNom.getVar('reviewpage')
-    reviewpage_content = site.Pages[reviewpage]
+    reviewpage_content = site.Pages[reviewpage].text()
     reviewer = re.match(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
-    # if re.match(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)",reviewpage_content)
+
     if reviewer:
         currentNom.set_reviewer(reviewer.group(2), reviewer[0].replace("'''Reviewer:''' ", ''))
         if currentNom.getVar('status') is 'new':
@@ -328,8 +330,7 @@ for art in articles:
                 page.save(art, summary="Transcluding GA review", bot=True, minor=True)
 
             # Notify the nom that the page is now on review
-            noms_talk_page = site.Pages["User talk:" + currentNom.getVar('nominator_plain')]
-            # FIXME: noms_talk_page.resolveRedirects() http://mwclient.readthedocs.io/en/latest/reference/page.html?highlight=redirect
+            noms_talk_page = site.Pages["User talk:" + currentNom.getVar('nominator_plain')].resolve_redirect()
             # Clean all this up
             if (noms_talk_page[0:len("User talk")] is "User talk" and not
             re.match(r'\[\[{}\]\].+?{}/'.format(re.escape(currentNom), re.escape('<!-- Template:GANotice -->')),
@@ -345,18 +346,77 @@ for art in articles:
             del old_contents
 
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM `gan` WHERE `page` = {}".format(title))
+                cur.execute("DELETE FROM `gan` WHERE `page` = {};".format(title)) # If already defined
                 cur.execute("INSERT INTO `gan` (`page`, `reviewerplain`, `reviewer`, `subtopic`, "
-                            "`nominator`) VALUES ({},{},{},{},{})".format(title, currentNom.getVar('reviewer'),
+                            "`nominator`) VALUES ({},{},{},{},{});".format(title, currentNom.getVar('reviewer'),
                                                                           reviewer[1], currentNom.getVar('subtopic'),
                                                                           currentNom.getVar('nominator_plain')))
                 cur.execute("INSERT INTO `reviews` (`review_article`, `review_subpage`, "
                             "`review_user`, `review_timestamp`) VALUES "
-                            "({},{},{},{})".format(site.Pages[title].pageid, site.Pages[reviewpage].pageid,
+                            "({},{},{},{});".format(site.Pages[title].pageid, site.Pages[reviewpage].pageid,
                                                    getUserID(currentNom.getVar('reviewer')),
                                                    currentNom.getVar('unixtime')))
-                cur.execute("INSERT INTO `user` (`user_id`, `user_name`) VALUES ({},{})".format(
+                cur.execute("INSERT INTO `user` (`user_id`, `user_name`) VALUES ({},{});".format(
                     getUserID(currentNom.getVar('reviewer')),
                     currentNom.getVar('reviewer')))
                 cur.execute("INSERT INTO `article` (`article_id`, `article_title`, `article_status`) "
-                            "VALUES ({},{},{})".format(site.Pages[title].pageid, title, ""))
+                            "VALUES ({},{},{});".format(site.Pages[title].pageid, title, ""))
+
+rows = []
+with conn.cursor(pymysql.cursors.DictCursor) as cur:
+    cur.execute("SELECT * FROM `gan`;")
+    rows = cur.fetchall()
+
+for row in rows:
+    if row['page'] in titles:
+        continue
+
+    status = None
+    addTemplate = False
+
+    contents = site.Pages["Talk:{}".format(row['page'])].text()
+
+    statusGA = re.search(r'\|\s*?currentstatus\s*?=\s*?GA', contents, re.I)
+    isGA = re.search(r'\{{2}\s?GA(?! nominee)', contents)
+    failedGA = re.search(r'\{{2}\s?FailedGA', contents, re.I)
+
+    noms_talk_page = site.Pages["User talk:{}".format(row['nominator'])].resolve_redirects()
+    nomtalkText = noms_talk_page.text()
+    templateExists = re.search('\[\[{}\]\].+?<!-- Template:GANotice result=' \
+                               '(?:pass|fail) -->'.format(re.escape(row['page'])),
+                               nomtalkText, re.I)
+
+    sig = row['reviewerplain']
+    fullsig = "-- {{subst:user0|User={}}} ~~~~~".format(sig)
+    
+    summary = "/* Your [[WP:GA|GA]] nomination of " \
+              "[[{}]] */ new section".format(row['page'])
+    
+    if (noms_talk_page[:9] == "User talk" and not templateExists and
+        sig not in dontNotify and allow_bots(nomtalkText, botuser)):
+        addTemplate = True
+    
+    if statusGA or isGA and not failedGA:
+        editsummary.passed(row['page'], row['subtopic']) # Fixme
+        
+        add_icon(row['page'])
+
+        if addTemplate:
+            message = "{{subst:GANotice|article={0}|result=pass|}} " \
+                      "<small>Message delivered by [[User:{1}|" \
+                      "{1}]], on behalf of [[User:{2}|{2}]]</small> " \
+                      "{3}".format(row['page'], botuser, sig, fullsig)
+            noms_talk_page.save("\n\n{}".format(message), summary)
+    else:
+        editsummary.failed(row['page'], row['subtopic']) # Fixme
+
+        if addTemplate:
+            message = "{{subst:GANotice|article={0}|result=fail|}} " \
+                      "<small>Message delivered by [[User:{1}|" \
+                      "{1}]], on behalf of [[User:{2}|{2}]]</small> " \
+                      "{3}".format(row['page'], botuser, sig, fullsig)
+            noms_talk_page.save("\n\n{}".format(message), summary)
+            
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM `gan` WHERE `page` = {};".format(row['page']))
+    
