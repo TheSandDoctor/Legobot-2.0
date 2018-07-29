@@ -15,18 +15,6 @@ botuser = 'Legobot'
 databasename = 's53824__legobot2'
 
 
-def place_notif(user, status, page):
-    if user is None:
-        raise ValueError("Name can't be None")
-    if status is None:
-        raise ValueError("Status can't be None")
-    if page is None:
-        raise ValueError("Page can't be None")
-
-
-# some code
-
-
 def allow_bots(text, user):
     user = user.lower().strip()
     text = mwparserfromhell.parse(text)
@@ -55,14 +43,6 @@ def allow_bots(text, user):
 def getUserID(username):
     result = site.api('query', list='users', ususers=username, format='json')
     return result['query']['users'][0]['userid']
-
-
-def update_GAN_page():
-    pass
-
-
-def transclude_review():
-    pass
 
 
 def add_icon(title):
