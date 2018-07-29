@@ -283,7 +283,7 @@ for statPerson in statsArray:
     name = re.search(r'\[\[User:(.+?)\|.+?\]\]', statPerson, re.I).group(1)
     reviews = re.search(r'<td>\s*(\d+)\s*<\/td>', statPerson, re.I).group(1)
     dictAdd = {"name":name, "reviews":reviews}
-    gaStats.append(dictAdd)
+    gaStats.append(dictAdd.copy())
         
 page = site.Pages["User:GA bot/Don't notify users for me"]
 user_no_msg_regex = re.compile(r'\[\[User:(.+)\]\]', re.IGNORECASE)
@@ -374,7 +374,15 @@ for art in articles:
                     currentNom.getVar('reviewer')))
                 cur.execute("INSERT INTO `article` (`article_id`, `article_title`, `article_status`) "
                             "VALUES ({},{},{});".format(site.Pages[title].pageid, title, ""))
-            
+            alreadyThere = False
+            nameFound = next((item for item in gaStats if item["name"] == currentNom.getVar('reviewer')), False)
+            if nameFound:
+                nameFound["reviews"] += 1
+                alreadyThere = True
+            if not alreadyThere:
+                dictAdd = {"name":currentNom.getVar('reviewer'), "reviews":"1"}
+                gaStats.append(dictAdd.copy())
+                
 
 rows = []
 with conn.cursor(pymysql.cursors.DictCursor) as cur:
@@ -435,3 +443,31 @@ for row in rows:
         cur.execute("DELETE FROM `gan` WHERE `page` = {};".format(row['page']))
         
 ganoms.sort(reverse=True) # Sort from most recent (?)
+
+
+# End of script (remove comment later)
+# Really dislike all this temporary looping stuff. Should be changed
+
+statsLength = len(gaStats)
+while statsLength > 0:
+    newStats = 0
+    dummyNum = 1 # Replace this?
+    while dummyNum < statsLength:
+        if gaStats[dummyNum - 1]['reviews'] < gaStats[dummyNum]['reviews']:
+            tmp = gaStats[dummyNum]
+            gaStats[dummyNum] = gaStats[dummyNum - 1]
+            gaStats[dummyNum - 1] = tmp
+            newStats = dummyNum
+            dummyNum += 1
+    statsLength = newStats
+
+content = "<table class=\"wikitable\">\n<tr><th>User</th><th>Reviews</th></tr>\n"
+for gaStat in gaStats:
+    user = gaStat["name"]
+    reviews = gaStats["reviews"]
+    content += "<tr> <td> [[:User:{}]] </td> <td> {} </td> </tr>\n".format(user, reviews)
+content += "</table>\n"
+site.Pages["User:GA bot/Stats"].save(content, "Update Stats (Bot)")
+
+
+    
