@@ -224,10 +224,12 @@ class GANom:
         if raw:
             self.reviewerRaw = raw
 
-    def num_of_reviewers(self, name):
+    def numOfReviews(self, name):
         global gaStats
+        nameFound = next((item for item in gaStats if item["name"] == name), False)
+        if nameFound:
+            return "(Reviews: {}) ".format(nameFound["reviews"]))
 
-    # TODO: for gaStats in
     def existsThingyGahhh(self):
         if self.status is 'new':
             return ''
@@ -272,6 +274,17 @@ except Exception as e:
     sys.exit(0)
 # https://wikitech.wikimedia.org/wiki/User:Legoktm/toolforge_library
 
+gaStats = []
+
+statsText = site.Pages["User:GA bot/Stats"].text()
+statsArray = statsText.splitlines()
+
+for statPerson in statsArray:
+    name = re.search(r'\[\[User:(.+?)\|.+?\]\]', statPerson, re.I).group(1)
+    reviews = re.search(r'<td>\s*(\d+)\s*<\/td>', statPerson, re.I).group(1)
+    dictAdd = {"name":name, "reviews":reviews}
+    gaStats.append(dictAdd)
+        
 page = site.Pages["User:GA bot/Don't notify users for me"]
 user_no_msg_regex = re.compile(r'\[\[User:(.+)\]\]', re.IGNORECASE)
 dontNotify = user_no_msg_regex.findall(page.text())
@@ -361,6 +374,7 @@ for art in articles:
                     currentNom.getVar('reviewer')))
                 cur.execute("INSERT INTO `article` (`article_id`, `article_title`, `article_status`) "
                             "VALUES ({},{},{});".format(site.Pages[title].pageid, title, ""))
+            
 
 rows = []
 with conn.cursor(pymysql.cursors.DictCursor) as cur:
@@ -419,4 +433,5 @@ for row in rows:
             
     with conn.cursor() as cur:
         cur.execute("DELETE FROM `gan` WHERE `page` = {};".format(row['page']))
-    
+        
+ganoms.sort(reverse=True) # Sort from most recent (?)
