@@ -402,7 +402,7 @@ for row in rows:
         add_icon(row['page'])
 
         if addTemplate:
-            message = "{{subst:GANotice|article={0}|result=pass|}} " \
+            message = "{{subst:GANotice|article={0}|result=pass}} " \
                       "<small>Message delivered by [[User:{1}|" \
                       "{1}]], on behalf of [[User:{2}|{2}]]</small> " \
                       "{3}".format(row['page'], botuser, sig, fullsig)
@@ -411,7 +411,7 @@ for row in rows:
         editsummary.failed(row['page'], row['subtopic']) # Fixme
 
         if addTemplate:
-            message = "{{subst:GANotice|article={0}|result=fail|}} " \
+            message = "{{subst:GANotice|article={0}|result=fail}} " \
                       "<small>Message delivered by [[User:{1}|" \
                       "{1}]], on behalf of [[User:{2}|{2}]]</small> " \
                       "{3}".format(row['page'], botuser, sig, fullsig)
