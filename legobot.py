@@ -333,7 +333,7 @@ for art in articles:
     currentNom = GANom(title, ganom)
     reviewpage = "{}/GA{}".format(art, currentNom.getVar('reviewpage'))
     reviewpage_content = site.Pages[reviewpage].text()
-    reviewer = re.match(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
+    reviewer = re.search(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
 
     if reviewer:
         currentNom.set_reviewer(reviewer.group(2), reviewer[0].replace("'''Reviewer:''' ", ''))
@@ -341,7 +341,7 @@ for art in articles:
             currentNom.set_status('on review')
             old_contents = contents
             contents = contents.replace("status=|", "status=onreview|")
-            if not re.match('\{\{' + re.escape(reviewpage) + '\}\}', contents, re.IGNORECASE):
+            if not re.search('\{\{' + re.escape(reviewpage) + '\}\}', contents, re.IGNORECASE):
                 contents += "\n\n{{{" + reviewpage + "}}}"
             if (contents is not old_contents and allow_bots(art.text(), botuser)) is True:
                 page.save(art, summary="Transcluding GA review", bot=True, minor=True)
@@ -350,7 +350,7 @@ for art in articles:
             noms_talk_page = site.Pages["User talk:" + currentNom.getVar('nominator_plain')].resolve_redirect()
             # Clean all this up
             if (noms_talk_page[0:len("User talk")] is "User talk" and not
-            re.match(r'\[\[{}\]\].+?{}/'.format(re.escape(currentNom), re.escape('<!-- Template:GANotice -->')),
+            re.search(r'\[\[{}\]\].+?{}/'.format(re.escape(currentNom), re.escape('<!-- Template:GANotice -->')),
             noms_talk_page.content())
             and not currentNom.getVar('reviewer') in dontNotify):
                 sig = currentNom.getVar('reviewer')

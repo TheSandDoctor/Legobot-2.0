@@ -3,3 +3,4 @@ venv/
 .idea
 credentials.py
 credentials.txt
+credentials.py
