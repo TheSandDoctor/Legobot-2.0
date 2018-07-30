@@ -3,6 +3,7 @@ import mwparserfromhell
 import toolforge
 import mwclient  # TODO: clean up mwclient imports
 import pymysql
+import credentials
 from mwclient import *
 from datetime import *
 from dateutil import *
@@ -254,9 +255,12 @@ class GANom:
 
         
 print("Logging in...")
-# TODO: Log in stuff
-print("Checking users how don't want messages left on their behalf...")
 site = mwclient.Site(('https', 'en.wikipedia.org'), '/w/')
+try:
+    site.login(credentials.username, credentials.password)
+except:
+    print("Error with logging in")
+    sys.exit(0)
 
 print("Retrieving database login credentials...")
 # Might like to use ConfigParser
