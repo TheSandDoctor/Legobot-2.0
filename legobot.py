@@ -444,8 +444,56 @@ for row in rows:
         
 ganoms.sort(reverse=True) # Sort from most recent (?)
 
+# Better variable names
+lines = text.splitlines()
 
-# End of script (remove comment later)
+newpage = ""
+
+subcat = None
+
+for line in lines:
+    if subcat is None:
+        subtopic = re.search(r'<!--\s*Bot\s*Start\s*"([^"]+)"\s*-->', line, re.I)
+        if subtopic:
+            subcat = subtopic.group(1)
+        newpage += "{}\n".format(line)
+
+    elif line.find('<!-- Bot End -->') != -1:
+        for nom in ganoms:
+            if nom.getVar('subtopic') == subcat:
+                newpage += nom.wikicode()
+        newpage += "{}\n".format(line)
+        subcat = None
+
+site.Pages["Wikipedia:Good article nominations"].save(newpage, editsummary.generate(),
+                                                      minor=False, bot=True)
+
+splitPage = newpage.split('<!-- EVERYTHING BELOW THIS COMMENT IS UPDATED ' \
+                          'AUTOMATICALLY BY A BOT -->')
+splitPage2 = splitPage[1].split('<!-- EVERYTHING ABOVE THIS COMMENT IS UPDATED ' \
+                                'AUTOMATICALLY BY A BOT -->')
+lines = splitPage2[0].splitlines()
+
+topicLists = {}
+
+for line in lines:
+    subTopic = re.search(r'^\s*==([^=]+)==\s*$', line)
+    if subTopic:
+        subcat = subTopic.group(1).strip()
+    if subcat:
+        topicLists[subcat] += "{}\n".format(line)
+
+for subcat, content in topicLists.items():
+    startPage = site.Pages["Wikipedia:Good article nominations/Topic lists/" \
+                           "{}".format(subcat)]
+    startText = startPage.text()
+    tempSplit = startText.split('<!-- BOT STARTS HERE -->')
+    content = "{}<!-- BOT STARTS HERE -->\n{}".format(tempSplit[0], content)
+
+    subcats = re.findall(r'<!--\s*Bot\s*Start\s*"([^"]+)"\s*-->', startText,
+                         re.I)
+    startPage.save(content, editsummary.generate(subcats))
+
 # Really dislike all this temporary looping stuff. Should be changed
 
 statsLength = len(gaStats)
@@ -468,6 +516,3 @@ for gaStat in gaStats:
     content += "<tr> <td> [[:User:{}]] </td> <td> {} </td> </tr>\n".format(user, reviews)
 content += "</table>\n"
 site.Pages["User:GA bot/Stats"].save(content, "Update Stats (Bot)")
-
-
-    
