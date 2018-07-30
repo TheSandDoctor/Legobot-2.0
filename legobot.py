@@ -57,7 +57,7 @@ def add_icon(title):
 def getTransclusions(site, page, sleep_duration=None, extra=""):
     cont = None
     pages = []
-    i = 0
+
     while True:
         result = site.api('query', list='embeddedin', eititle=str(page), eicontinue=cont, eilimit=500, format='json')
         print("got here")
@@ -66,8 +66,7 @@ def getTransclusions(site, page, sleep_duration=None, extra=""):
         # res2 = result['query']['embeddedin']
         for res in result['query']['embeddedin']:
             print('append')
-            pages.append(str(i) + " " + res['title'])
-            i += 1
+            pages.append(res['title'])
         try:
             cont = result['continue']['eicontinue']
             print("cont")
