@@ -313,6 +313,9 @@ if text is "":
 # Each GA nominee tag will now be standardized and stripped apart, with each detail found in each tag sorted into the right array
 
 titles = []
+
+# Change variable names (important)
+
 ganoms = []
 count = 0
 for art in articles:
@@ -330,7 +333,7 @@ for art in articles:
         continue  # move on
 
     # TODO: The next block of code, could probably be done better
-    currentNom = GANom(title, ganom)
+    currentNom = GANom(title)
     reviewpage = "Talk:" + currentNom + "/GA" + currentNom.getVar('reviewpage')
     reviewpage_content = site.Pages[reviewpage].text()
     reviewer = re.match(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
@@ -346,7 +349,7 @@ for art in articles:
             if (contents is not old_contents and allow_bots(art.text(), botuser)) is True:
                 page.save(art, summary="Transcluding GA review", bot=True, minor=True)
 
-            # Notify the nom that the page is now on review
+            # Notify the nominator that the page is now on review
             noms_talk_page = site.Pages["User talk:" + currentNom.getVar('nominator_plain')].resolve_redirect()
             # Clean all this up
             if (noms_talk_page[0:len("User talk")] is "User talk" and not
