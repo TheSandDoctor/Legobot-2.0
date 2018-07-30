@@ -49,7 +49,7 @@ def getUserID(username):
 
 def add_icon(title):
     text = site.Pages[title].text()
-    if (re.search(r'\{\{good( |_)article\}\}', text, re.I) is None and allow_bots(text, botuser):
+    if (re.search(r'\{\{good( |_)article\}\}', text, re.I) is None and allow_bots(text, botuser)):
         savetext = "{{good article}}\n{}".format(text)
         page.save(title, summary="Adding Good Article Icon", bot=True, minor=True)
 
@@ -121,7 +121,7 @@ class editsummary:
 
 
 class GANom:
-    def __init__(self, article):
+    def __init__(self, article, template = None):
         self.unixtime = time.time()
         self.timestamp = "Error parsing timestamp."
         self.reviewpage = False
@@ -134,9 +134,9 @@ class GANom:
         self.nominator_plain = 'Example'
         self.note = False
         self.article = article.trim()
-
-    def toString(self):
-        return self.article
+        
+        if template is not None:
+            self.parse_template(template)
 
     def getVar(self, var):
         if var in ['status', 'reviewpage', 'reviewer', 'subtopic', 'unixtime', 'subtopic', 'nominator',
@@ -229,7 +229,7 @@ class GANom:
         global gaStats
         nameFound = next((item for item in gaStats if item["name"] == name), False)
         if nameFound:
-            return "(Reviews: {}) ".format(nameFound["reviews"]))
+            return "(Reviews: {}) ".format(nameFound["reviews"])
 
     def existsThingyGahhh(self):
         if self.status is 'new':
@@ -298,12 +298,13 @@ if len(transcludes) < 1:
     sys.exit(0)
 print("Done.")
 articles = []
-trans_check = re.compile(r'^Talk:')
+
 for trans in transcludes:
-    if trans_check.match(trans):
+    if re.search(r'^Talk:', trans):
         articles.append(trans)
         print("Appended article")
 del trans  # variable no longer needed
+
 wpgan = site.Pages["Wikipedia:Good article nominations"]
 text = wpgan.text()
 if text is "":
@@ -333,7 +334,7 @@ for art in articles:
         continue  # move on
 
     # TODO: The next block of code, could probably be done better
-    currentNom = GANom(title)
+    currentNom = GANom(title, ganom)
     reviewpage = "Talk:" + currentNom + "/GA" + currentNom.getVar('reviewpage')
     reviewpage_content = site.Pages[reviewpage].text()
     reviewer = re.match(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
