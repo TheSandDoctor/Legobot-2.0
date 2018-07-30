@@ -49,7 +49,7 @@ def getUserID(username):
 
 def add_icon(title):
     text = site.Pages[title].text()
-    if (re.search(r'\{\{good( |_)article\}\}', text, re.I) is None and allow_bots(text, botuser):
+    if (re.search(r'\{\{good( |_)article\}\}', text, re.I) is None and allow_bots(text, botuser)):
         savetext = "{{good article}}\n{}".format(text)
         page.save(title, summary="Adding Good Article Icon", bot=True, minor=True)
 
@@ -57,7 +57,7 @@ def add_icon(title):
 def getTransclusions(site, page, sleep_duration=None, extra=""):
     cont = None
     pages = []
-    i = 0
+
     while True:
         result = site.api('query', list='embeddedin', eititle=str(page), eicontinue=cont, eilimit=500, format='json')
         print("got here")
@@ -66,8 +66,7 @@ def getTransclusions(site, page, sleep_duration=None, extra=""):
         # res2 = result['query']['embeddedin']
         for res in result['query']['embeddedin']:
             print('append')
-            pages.append(str(i) + " " + res['title'])
-            i += 1
+            pages.append(res['title'])
         try:
             cont = result['continue']['eicontinue']
             print("cont")
@@ -121,7 +120,7 @@ class editsummary:
 
 
 class GANom:
-    def __init__(self, article):
+    def __init__(self, article, template = None):
         self.unixtime = time.time()
         self.timestamp = "Error parsing timestamp."
         self.reviewpage = False
@@ -133,10 +132,10 @@ class GANom:
         self.nominator = '[[User:Example|Unknown]]'
         self.nominator_plain = 'Example'
         self.note = False
-        self.article = article.trim()
-
-    def toString(self):
-        return self.article
+        self.article = article.strip()
+        
+        if template is not None:
+            self.parse_template(template)
 
     def getVar(self, var):
         if var in ['status', 'reviewpage', 'reviewer', 'subtopic', 'unixtime', 'subtopic', 'nominator',
@@ -148,69 +147,67 @@ class GANom:
         if template.has("1"):  # timestamp
             self.timestamp = template.get("1").value.strip()
             self.set_time(template.get("1").value)
+            
         if template.has("nominator"):  # nominator
-            pass
+            self.set_nominator(template.get("nominator").value)
+            
         if template.has("page"):  # page
             self.set_review_page(template.get("page").value)
-            pass
+            
         if template.has("status"):  # status
-            self.set_status(template.get("status").value)
-            pass
+            if template.get("status").value:
+                self.set_status(template.get("status").value)
+
         if template.has("subtopic"):  # subtopic
             self.set_subtopic(template.get("subtopic").value)
-            pass
+
         if template.has("note"):  # note
             self.set_note(template.get("note").value)
-            pass
-        if template.has("time"):  # time
-            pass
-        pass
 
     def set_time(self, timestamp):
-        # TODO: work on
-        unix = parse(timestamp).strftime(date_format)
+        unix = time.mktime(parser.parse(str(timestamp[:-6])).timetuple())
         if unix is False:
             return False
         self.unixtime = unix
-        # unix = datetime.strptime(timestamp, '%m/%d/%Y')
-        pass
 
     def set_review_page(self, page):
         page = page.split()
-        if re.search(r'/^[0-9]+$/', page):
+        if re.search(r'^[0-9]+$', page[0]):
             self.reviewpage = page
 
     def set_subtopic(self, topic):
-        topic = topic.replace(topic, ", and", " and").strip()
-        if not (not topic):
+        try:
+            topic = topic.replace(", and", " and").strip()
+        except ValueError:
+            pass
+        
+        if topic:
             self.subtopic = topic
 
     def set_status(self, status):
-        pass
+        status = str(status)
+        cleanedStatus = self.cleanStatus(status)
+        if cleanedStatus in self.valid_statuses:
+            self.status = cleanedStatus
 
     def cleanStatus(self, status):
-        if (re.search(r'(on ?)?hold', status, re.IGNORECASE)):
+        if re.search(r'(on ?)?hold', status, re.IGNORECASE):
             return 'on hold'
-        elif (re.search(r'(on ?)?review', status, re.IGNORECASE)):
+        elif re.search(r'(on ?)?review', status, re.IGNORECASE):
             return 'on review'
-        elif (re.search(r'(2nd|second|2)? ?op(inion)?', status, re.IGNORECASE)):
+        elif re.search(r'(2nd|second|2)? ?op(inion)?', status, re.IGNORECASE):
             return '2nd opinion'
         return status
 
     def set_nominator(self, nominator):
-        nominator = nominator.strip()
-        if nominator(not None):
+        if nominator:
+            nominator = nominator.strip()
             self.nominator = nominator
             m = re.search(r"\[\[User:(.+?)\|.+?\]\]", nominator)
-            if m.group(1) is (not None):
-                # TODO: fix/work on
+            if m.group(1):
                 nom = m.group(1).replace('_', ' ')
-                nom = nominator[0].upper() + nominator[1:]
-                # nom = m.group(1)
-                # nom = m.replace('_',' ')
-
-                nom = nominator[0].upper() + nominator[1:]
-                self.nominator_plain = nom  # nominator[0].upper() + nominator[1:]
+                nom = nom[0].upper() + nom[1:]
+                self.nominator_plain = nom.strip()
 
     def set_note(self, note):
         note = note.strip()
@@ -229,7 +226,7 @@ class GANom:
         global gaStats
         nameFound = next((item for item in gaStats if item["name"] == name), False)
         if nameFound:
-            return "(Reviews: {}) ".format(nameFound["reviews"]))
+            return "(Reviews: {}) ".format(nameFound["reviews"])
 
     def existsThingyGahhh(self):
         if self.status is 'new':
@@ -298,12 +295,13 @@ if len(transcludes) < 1:
     sys.exit(0)
 print("Done.")
 articles = []
-trans_check = re.compile(r'^Talk:')
+
 for trans in transcludes:
-    if trans_check.match(trans):
+    if re.search(r'^Talk:', trans):
         articles.append(trans)
         print("Appended article")
 del trans  # variable no longer needed
+
 wpgan = site.Pages["Wikipedia:Good article nominations"]
 text = wpgan.text()
 if text is "":
@@ -313,6 +311,9 @@ if text is "":
 # Each GA nominee tag will now be standardized and stripped apart, with each detail found in each tag sorted into the right array
 
 titles = []
+
+# Change variable names (important)
+
 ganoms = []
 count = 0
 for art in articles:
@@ -321,17 +322,16 @@ for art in articles:
     if not contents:
         continue
     ganom = None
-    code = mwparserfromhell.parse(text)
+    code = mwparserfromhell.parse(contents)
     for template in code.filter_templates():
-        if template.name.matches("ga nominee") or template.name.matches("ganominee"):
+        if template.name.matches("GA nominee") or template.name.matches("GAnominee"):
             ganom = template
             break
     if ganom is None:
         continue  # move on
 
-    # TODO: The next block of code, could probably be done better
     currentNom = GANom(title, ganom)
-    reviewpage = "Talk:" + currentNom + "/GA" + currentNom.getVar('reviewpage')
+    reviewpage = "{}/GA{}".format(art, currentNom.getVar('reviewpage'))
     reviewpage_content = site.Pages[reviewpage].text()
     reviewer = re.search(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
 
@@ -346,7 +346,7 @@ for art in articles:
             if (contents is not old_contents and allow_bots(art.text(), botuser)) is True:
                 page.save(art, summary="Transcluding GA review", bot=True, minor=True)
 
-            # Notify the nom that the page is now on review
+            # Notify the nominator that the page is now on review
             noms_talk_page = site.Pages["User talk:" + currentNom.getVar('nominator_plain')].resolve_redirect()
             # Clean all this up
             if (noms_talk_page[0:len("User talk")] is "User talk" and not
