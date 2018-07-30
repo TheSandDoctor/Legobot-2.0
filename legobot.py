@@ -132,7 +132,7 @@ class GANom:
         self.nominator = '[[User:Example|Unknown]]'
         self.nominator_plain = 'Example'
         self.note = False
-        self.article = article.trim()
+        self.article = article.strip()
         
         if template is not None:
             self.parse_template(template)
@@ -147,69 +147,67 @@ class GANom:
         if template.has("1"):  # timestamp
             self.timestamp = template.get("1").value.strip()
             self.set_time(template.get("1").value)
+            
         if template.has("nominator"):  # nominator
-            pass
+            self.set_nominator(template.get("nominator").value)
+            
         if template.has("page"):  # page
             self.set_review_page(template.get("page").value)
-            pass
+            
         if template.has("status"):  # status
-            self.set_status(template.get("status").value)
-            pass
+            if template.get("status").value:
+                self.set_status(template.get("status").value)
+
         if template.has("subtopic"):  # subtopic
             self.set_subtopic(template.get("subtopic").value)
-            pass
+
         if template.has("note"):  # note
             self.set_note(template.get("note").value)
-            pass
-        if template.has("time"):  # time
-            pass
-        pass
 
     def set_time(self, timestamp):
-        # TODO: work on
-        unix = parse(timestamp).strftime(date_format)
+        unix = time.mktime(parser.parse(str(timestamp[:-6])).timetuple())
         if unix is False:
             return False
         self.unixtime = unix
-        # unix = datetime.strptime(timestamp, '%m/%d/%Y')
-        pass
 
     def set_review_page(self, page):
         page = page.split()
-        if re.match(r'/^[0-9]+$/', page):
+        if re.search(r'^[0-9]+$', page[0]):
             self.reviewpage = page
 
     def set_subtopic(self, topic):
-        topic = topic.replace(topic, ", and", " and").strip()
-        if not (not topic):
+        try:
+            topic = topic.replace(", and", " and").strip()
+        except ValueError:
+            pass
+        
+        if topic:
             self.subtopic = topic
 
     def set_status(self, status):
-        pass
+        status = str(status)
+        cleanedStatus = self.cleanStatus(status)
+        if cleanedStatus in self.valid_statuses:
+            self.status = cleanedStatus
 
     def cleanStatus(self, status):
-        if (re.match(r'/(on ?)?hold/i', status)):
+        if re.search(r'(on ?)?hold', status, re.IGNORECASE):
             return 'on hold'
-        elif (re.match(r'/(on ?)?review/i', status)):
+        elif re.search(r'(on ?)?review', status, re.IGNORECASE):
             return 'on review'
-        elif (re.match(r'/(2nd|second|2)? ?op(inion)?/i', status)):
+        elif re.search(r'(2nd|second|2)? ?op(inion)?', status, re.IGNORECASE):
             return '2nd opinion'
         return status
 
     def set_nominator(self, nominator):
-        nominator = nominator.strip()
-        if nominator(not None):
+        if nominator:
+            nominator = nominator.strip()
             self.nominator = nominator
-            m = re.match(r"/\[\[User:(.+?)\|.+?\]\]/", nominator)
-            if m.group(1) is (not None):
-                # TODO: fix/work on
+            m = re.search(r"\[\[User:(.+?)\|.+?\]\]", nominator)
+            if m.group(1):
                 nom = m.group(1).replace('_', ' ')
-                nom = nominator[0].upper() + nominator[1:]
-                # nom = m.group(1)
-                # nom = m.replace('_',' ')
-
-                nom = nominator[0].upper() + nominator[1:]
-                self.nominator_plain = nom  # nominator[0].upper() + nominator[1:]
+                nom = nom[0].upper() + nom[1:]
+                self.nominator_plain = nom.strip()
 
     def set_note(self, note):
         note = note.strip()
@@ -332,9 +330,8 @@ for art in articles:
     if ganom is None:
         continue  # move on
 
-    # TODO: The next block of code, could probably be done better
     currentNom = GANom(title, ganom)
-    reviewpage = "Talk:" + currentNom + "/GA" + currentNom.getVar('reviewpage')
+    reviewpage = "{}/GA{}".format(art, currentNom.getVar('reviewpage'))
     reviewpage_content = site.Pages[reviewpage].text()
     reviewer = re.match(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
 
