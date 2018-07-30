@@ -324,9 +324,9 @@ for art in articles:
     if not contents:
         continue
     ganom = None
-    code = mwparserfromhell.parse(text)
+    code = mwparserfromhell.parse(contents)
     for template in code.filter_templates():
-        if template.name.matches("ga nominee") or template.name.matches("ganominee"):
+        if template.name.matches("GA nominee") or template.name.matches("GAnominee"):
             ganom = template
             break
     if ganom is None:
