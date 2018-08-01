@@ -96,12 +96,6 @@ class GANom:
         if template is not None:
             self.parse_template(template)
 
-    def getVar(self, var):
-        if var in ['status', 'reviewpage', 'reviewer', 'subtopic', 'unixtime', 'subtopic', 'nominator',
-                   'nominator_plain']:
-            return var
-        return False
-
     def parse_template(self, template):
         if template.has("1"):  # timestamp
             self.timestamp = template.get("1").value.strip()
@@ -290,13 +284,13 @@ for art in articles:
         continue  # move on
 
     currentNom = GANom(title, ganom)
-    reviewpage = "{}/GA{}".format(art, currentNom.getVar('reviewpage'))
+    reviewpage = "{}/GA{}".format(art, currentNom.reviewpage)
     reviewpage_content = site.Pages[reviewpage].text()
     reviewer = re.search(r"'''Reviewer:''' .*?(\[\[User:([^|]+)\|[^\]]+\]\]).*?\(UTC\)", reviewpage_content)
 
     if reviewer:
         currentNom.set_reviewer(reviewer.group(2), reviewer[0].replace("'''Reviewer:''' ", ''))
-        if currentNom.getVar('status') is 'new':
+        if currentNom.status is 'new':
             currentNom.set_status('on review')
             old_contents = contents
             contents = contents.replace("status=|", "status=onreview|")
@@ -306,13 +300,13 @@ for art in articles:
                 page.save(art, summary="Transcluding GA review", bot=True, minor=True)
 
             # Notify the nominator that the page is now on review
-            noms_talk_page = site.Pages["User talk:" + currentNom.getVar('nominator_plain')].resolve_redirect()
+            noms_talk_page = site.Pages["User talk:" + currentNom.nominator_plain].resolve_redirect()
             # Clean all this up
             if (noms_talk_page[0:len("User talk")] is "User talk" and not
             re.search(r'\[\[{}\]\].+?{}/'.format(re.escape(currentNom), re.escape('<!-- Template:GANotice -->')),
             noms_talk_page.content())
-            and not currentNom.getVar('reviewer') in dontNotify):
-                sig = currentNom.getVar('reviewer')
+            and not currentNom.reviewer in dontNotify):
+                sig = currentNom.reviewer
                 sig2 = "-- {{subst:user0|User=" + sig + "}}"
                 msg = "{{subst:GANotice|article=" + currentNom + "|days=7}} <small>Message delivered by [[User:" + botuser + "|" + botuser + "]], on behalf of [[User:" + sig + "|" + sig + "]]</small>" + sig2
                 if allow_bots(noms_talk_page.content(), botuser):
@@ -324,26 +318,26 @@ for art in articles:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM `gan` WHERE `page` = {};".format(title)) # If already defined
                 cur.execute("INSERT INTO `gan` (`page`, `reviewerplain`, `reviewer`, `subtopic`, "
-                            "`nominator`) VALUES ({},{},{},{},{});".format(title, currentNom.getVar('reviewer'),
-                                                                          reviewer[1], currentNom.getVar('subtopic'),
-                                                                          currentNom.getVar('nominator_plain')))
+                            "`nominator`) VALUES ({},{},{},{},{});".format(title, currentNom.reviewer,
+                                                                          reviewer[1], currentNom.subtopic,
+                                                                          currentNom.nominator_plain))
                 cur.execute("INSERT INTO `reviews` (`review_article`, `review_subpage`, "
                             "`review_user`, `review_timestamp`) VALUES "
                             "({},{},{},{});".format(site.Pages[title].pageid, site.Pages[reviewpage].pageid,
-                                                   getUserID(currentNom.getVar('reviewer')),
-                                                   currentNom.getVar('unixtime')))
+                                                   getUserID(currentNom.reviewer),
+                                                   currentNom.unixtime))
                 cur.execute("INSERT INTO `user` (`user_id`, `user_name`) VALUES ({},{});".format(
-                    getUserID(currentNom.getVar('reviewer')),
-                    currentNom.getVar('reviewer')))
+                    getUserID(currentNom.reviewer),
+                    currentNom.reviewer))
                 cur.execute("INSERT INTO `article` (`article_id`, `article_title`, `article_status`) "
                             "VALUES ({},{},{});".format(site.Pages[title].pageid, title, ""))
             alreadyThere = False
-            nameFound = next((item for item in gaStats if item["name"] == currentNom.getVar('reviewer')), False)
+            nameFound = next((item for item in gaStats if item["name"] == currentNom.reviewer), False)
             if nameFound:
                 nameFound["reviews"] += 1
                 alreadyThere = True
             if not alreadyThere:
-                dictAdd = {"name":currentNom.getVar('reviewer'), "reviews":"1"}
+                dictAdd = {"name":currentNom.reviewer, "reviews":"1"}
                 gaStats.append(dictAdd.copy())
                 
     if currentNom.wikicode() not in gantext and currentNom.status == 'on hold':
@@ -442,7 +436,7 @@ for line in lines:
 
     elif line.find('<!-- Bot End -->') != -1:
         for nom in ganoms:
-            if nom.getVar('subtopic') == subcat:
+            if nom.subtopic == subcat:
                 newpage += nom.wikicode()
         newpage += "{}\n".format(line)
         subcat = None
