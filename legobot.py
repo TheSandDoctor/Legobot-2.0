@@ -78,47 +78,6 @@ def getTransclusions(site, page, sleep_duration=None, extra=""):
             #    print(pages)
             return pages
 
-
-class editsummary:
-    def __init__(self): # **kwargs ?
-        self.passed = []
-        self.failed = []
-        self.sNew = []
-        self.onReview = []
-        self.onHold = []
-
-    def passed(self, page, subcat):
-        # self.passed.append(page)
-        self.passed[subcat] = page
-        pass  # TODO: Fix
-
-    def failed(self, page, subcat):
-        # self.failed.append(page)
-        self.failed[subcat] = page
-        pass  # TODO: Fix
-
-    def sNew(self, page, subcat):
-        self.sNew[subcat] = page
-
-    def onReview(self, page, subcat, reviewer):
-        self.onReview[subcat] = [page, reviewer]
-
-    def onHold(self, page, subcat, reviewer):
-        self.onHold[subcat] = [page, reviewer]
-
-    def rmSubCats(self, var, subcats=False):
-        clean = []
-        # TODO: Complete
-        pass
-
-    def generate(self, subcats=False):
-        sum = ''
-        if self.sNew:
-            # TODO: complete
-            pass
-        pass
-
-
 class GANom:
     def __init__(self, article, template = None):
         self.unixtime = time.time()
@@ -387,6 +346,29 @@ for art in articles:
                 dictAdd = {"name":currentNom.getVar('reviewer'), "reviews":"1"}
                 gaStats.append(dictAdd.copy())
                 
+    if currentNom.wikicode() not in gantext and currentNom.status == 'on hold':
+        talktitle = "User talk:{}".format(currentNom.nominator_plain)
+        noms_talk_page = site.Pages[talktitle].resolve_redirect()
+        nomtalkText = noms_talk_page.text()
+
+        templateExists = re.search('\[\[{}\]\].+?<!-- Template:GANotice result=' \
+                                   'hold -->'.format(re.escape(title)),
+                                   nomtalkText, re.I)
+        sig = currentNom.reviewer
+        templateExists = None
+
+        if (talktitle[:9] == "User talk" and not templateExists and
+            sig not in dontNotify and allow_bots(nomtalkText, botuser)):
+
+                finalsig = "-- {{{{subst:user0|User={}}}}} ~~~~~".format(sig)
+                message = "{{{{subst:GANotice|article={0}|result=hold}}}} " \
+                          "<small>Message delivered by [[User:{1}|" \
+                          "{1}]], on behalf of [[User:{2}|{2}]]</small> " \
+                          "{3}".format(title, botuser, sig, finalsig)
+
+                noms_talk_page.save('\n\n{}'.format(message), '/* Your [[WP:GA|GA]] nomination of ' \
+                                                                  '[[{}]] */ new section'.format(title))
+                
 
 rows = []
 with conn.cursor(pymysql.cursors.DictCursor) as cur:
@@ -422,9 +404,7 @@ for row in rows:
         sig not in dontNotify and allow_bots(nomtalkText, botuser)):
         addTemplate = True
     
-    if statusGA or isGA and not failedGA:
-        editsummary.passed(row['page'], row['subtopic']) # Fixme
-        
+    if statusGA or isGA and not failedGA:        
         add_icon(row['page'])
 
         if addTemplate:
@@ -434,8 +414,6 @@ for row in rows:
                       "{3}".format(row['page'], botuser, sig, fullsig)
             noms_talk_page.save("\n\n{}".format(message), summary)
     else:
-        editsummary.failed(row['page'], row['subtopic']) # Fixme
-
         if addTemplate:
             message = "{{subst:GANotice|article={0}|result=fail}} " \
                       "<small>Message delivered by [[User:{1}|" \
@@ -469,7 +447,7 @@ for line in lines:
         newpage += "{}\n".format(line)
         subcat = None
 
-site.Pages["Wikipedia:Good article nominations"].save(newpage, editsummary.generate(),
+site.Pages["Wikipedia:Good article nominations"].save(newpage, "Update nominations page",
                                                       minor=False, bot=True)
 
 splitPage = newpage.split('<!-- EVERYTHING BELOW THIS COMMENT IS UPDATED ' \
@@ -496,7 +474,7 @@ for subcat, content in topicLists.items():
 
     subcats = re.findall(r'<!--\s*Bot\s*Start\s*"([^"]+)"\s*-->', startText,
                          re.I)
-    startPage.save(content, editsummary.generate(subcats))
+    startPage.save(content, "Update subtopic list")
 
 # Really dislike all this temporary looping stuff. Should be changed
 
