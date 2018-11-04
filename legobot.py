@@ -303,16 +303,17 @@ for art in articles:
 
             # Notify the nominator that the page is now on review
             noms_talk_page = site.Pages["User talk:" + currentNom.nominator_plain].resolve_redirect()
+            noms_talk_content = noms_talk_page.text()
             # Clean all this up
             if (noms_talk_page[0:len("User talk")] is "User talk" and not
             re.search(r'\[\[{}\]\].+?{}/'.format(re.escape(currentNom), re.escape('<!-- Template:GANotice -->')),
-            noms_talk_page.content())
+            noms_talk_content)
             and not currentNom.reviewer in dontNotify):
                 sig = currentNom.reviewer
                 sig2 = "-- {{subst:user0|User=" + sig + "}}"
                 msg = "{{subst:GANotice|article=" + currentNom + "|days=7}} <small>Message delivered by [[User:" + botuser + "|" + botuser + "]], on behalf of [[User:" + sig + "|" + sig + "]]</small>" + sig2
-                if allow_bots(noms_talk_page.content(), botuser):
-                    noms_talk_page.save(noms_talk_page.content() + "\n\n" + msg,
+                if allow_bots(noms_talk_content, botuser):
+                    noms_talk_page.save(noms_talk_content + "\n\n" + msg,
                               summary="/* Your [[WP:GA|GA]] nomination of [[" + currentNom + "]] */ new section")
 
             del old_contents
