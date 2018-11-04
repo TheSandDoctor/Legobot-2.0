@@ -48,10 +48,11 @@ def getUserID(username):
 
 
 def add_icon(title):
-    text = site.Pages[title].text()
+    mainPage = site.Pages[title]
+    text = mainPage.text()
     if (re.search(r'\{\{good( |_)article\}\}', text, re.I) is None and allow_bots(text, botuser)):
         savetext = "{{good article}}\n{}".format(text)
-        page.save(title, summary="Adding Good Article Icon", bot=True, minor=True)
+        mainPage.save(savetext, summary="Adding Good Article Icon", bot=True, minor=True)
 
 
 def getTransclusions(site, page, sleep_duration=None, extra=""):
@@ -271,7 +272,8 @@ ganoms = []
 count = 0
 for art in articles:
     title = art[5:]
-    contents = site.Pages[art].text()
+    articlePage = site.Pages[art]
+    contents = articlePage.text()
     if not contents:
         continue
     ganom = None
@@ -297,7 +299,7 @@ for art in articles:
             if not re.search('\{\{' + re.escape(reviewpage) + '\}\}', contents, re.IGNORECASE):
                 contents += "\n\n{{{" + reviewpage + "}}}"
             if (contents is not old_contents and allow_bots(art.text(), botuser)) is True:
-                page.save(art, summary="Transcluding GA review", bot=True, minor=True)
+                articlePage.save(contents, summary="Transcluding GA review", bot=True, minor=True)
 
             # Notify the nominator that the page is now on review
             noms_talk_page = site.Pages["User talk:" + currentNom.nominator_plain].resolve_redirect()
@@ -310,7 +312,7 @@ for art in articles:
                 sig2 = "-- {{subst:user0|User=" + sig + "}}"
                 msg = "{{subst:GANotice|article=" + currentNom + "|days=7}} <small>Message delivered by [[User:" + botuser + "|" + botuser + "]], on behalf of [[User:" + sig + "|" + sig + "]]</small>" + sig2
                 if allow_bots(noms_talk_page.content(), botuser):
-                    page.save(noms_talk_page.content() + "\n\n" + msg,
+                    noms_talk_page.save(noms_talk_page.content() + "\n\n" + msg,
                               summary="/* Your [[WP:GA|GA]] nomination of [[" + currentNom + "]] */ new section")
 
             del old_contents
